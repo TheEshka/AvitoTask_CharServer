@@ -1,0 +1,1 @@
+# AvitoTask_CharServer
