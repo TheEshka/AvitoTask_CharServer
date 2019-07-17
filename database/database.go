@@ -42,7 +42,7 @@ func InitDb(cfg Config) (*pgDb, error) {
 type pgDb struct {
 	dbConn *sql.DB
 
-	sqlCreateUser *sql.Stmt
+	sqlCreateUser       *sql.Stmt
 	sqlCreateChat       *sql.Stmt
 	sqlInsertUserToChat *sql.Stmt
 	sqlCreateMessage    *sql.Stmt
@@ -76,8 +76,8 @@ func (p *pgDb) prepareSQLStatements() (err error) {
 	}
 
 	request = "SELECT (chats.id), (chats.name),(chats.created_at) FROM chats " +
-		"INNER JOIN chat_users ON chats.id = chat_users.chat_id "+
-		"INNER JOIN users ON users.id = chat_users.user_id WHERE users.id = $1 ORDER BY chats.created_at;";
+		"INNER JOIN chat_users ON chats.id = chat_users.chat_id " +
+		"INNER JOIN users ON users.id = chat_users.user_id WHERE users.id = $1 ORDER BY chats.created_at;"
 	if p.sqlUserChats, err = p.dbConn.Prepare(request); err != nil {
 		log.Printf("Error preparing sqlUserChats: %v", err)
 		return err
@@ -99,17 +99,12 @@ func (p *pgDb) CreateUser(username string) (int64, error) {
 	err := p.sqlCreateUser.QueryRow(username, time.Now()).Scan(&lastInsertID)
 	if err != nil {
 		log.Printf("CreateUser database error / %v", err)
-		return 0, err
-	}
-	return lastInsertID, nil
-}
-
-func (p *pgDb) CreateChat(name string) (int64, error) {
-	var lastInsertID int64
-	err := p.sqlCreateChat.QueryRow(name, time.Now()).Scan(&lastInsertID)
-	if err != nil {
-		log.Printf("CreateChat database error / %v", err)
-		return 0, err
+		err = p.dbConn.Ping()
+		if err != nil {
+			log.Printf("CreateUser database connection error / %v", err)
+			return 0, model.ErrOnDatabase
+		}
+		return 0, model.ErrRequest
 	}
 	return lastInsertID, nil
 }
@@ -119,25 +114,54 @@ func (p *pgDb) CreateMessage(chatID int, userID int, text string) (int64, error)
 	err := p.sqlCreateMessage.QueryRow(chatID, userID, text, time.Now()).Scan(&lastInsertID)
 	if err != nil {
 		log.Printf("CreateMessage database error / %v", err)
-		return 0, err
+		err = p.dbConn.Ping()
+		if err != nil {
+			log.Printf("CreateMessage database connection error / %v", err)
+			return 0, model.ErrOnDatabase
+		}
+		return 0, model.ErrRequest
 	}
 	return lastInsertID, nil
 }
 
-func (p *pgDb) InsertUserToChat(chatID int, userID int) error {
-	_, err := p.sqlInsertUserToChat.Exec(chatID, userID, time.Now())
+func (p *pgDb) CreateChatWithUsers(name string, users []int) (int64, error) {
+	tx, _ := p.dbConn.Begin()
+
+	var chatID int64
+	err := tx.Stmt(p.sqlCreateChat).QueryRow(name, time.Now()).Scan(&chatID)
 	if err != nil {
-		log.Printf("CreateMessage database error / %v", err)
-		return err
+		tx.Rollback()
+		log.Printf("CreateChatWithUsers database error / %v", err)
+		err = p.dbConn.Ping()
+		if err != nil {
+			log.Printf("CreateChatWithUsers database connection error / %v", err)
+			return 0, model.ErrOnDatabase
+		}
+		return 0, model.ErrRequest
 	}
-	return nil
+
+	for _, userID := range users {
+		_, err := tx.Stmt(p.sqlInsertUserToChat).Exec(chatID, userID)
+		if err != nil {
+			tx.Rollback()
+			return 0, model.ErrRequest
+		}
+	}
+	tx.Commit()
+
+	return chatID, nil
 }
 
 func (p *pgDb) UserChats(userID int) ([]*model.Chat, error) {
 	rows, err := p.sqlUserChats.Query(userID)
 	if err != nil {
-		log.Printf("UserChats database error / %v", err)
-		return nil, err
+		log.Printf("InsertUserToChat database error / %v", err)
+		err = p.dbConn.Ping()
+		if err != nil {
+			log.Printf("InsertUserToChat database connection error / %v", err)
+			return nil, model.ErrOnDatabase
+		}
+		return nil, model.ErrRequest
 	}
 	defer rows.Close()
 
@@ -154,8 +178,13 @@ func (p *pgDb) UserChats(userID int) ([]*model.Chat, error) {
 func (p *pgDb) ChatMessages(chatID int) ([]*model.Message, error) {
 	rows, err := p.sqlChatMessages.Query(chatID)
 	if err != nil {
-		log.Printf("ChatMessages database error / %v", err)
-		return nil, err
+		log.Printf("InsertUserToChat database error / %v", err)
+		err = p.dbConn.Ping()
+		if err != nil {
+			log.Printf("InsertUserToChat database connection error / %v", err)
+			return nil, model.ErrOnDatabase
+		}
+		return nil, model.ErrRequest
 	}
 	defer rows.Close()
 
@@ -167,4 +196,33 @@ func (p *pgDb) ChatMessages(chatID int) ([]*model.Message, error) {
 	}
 
 	return messages, nil
+}
+
+func (p *pgDb) createChat(name string) (int64, error) {
+	var lastInsertID int64
+	err := p.sqlCreateChat.QueryRow(name, time.Now()).Scan(&lastInsertID)
+	if err != nil {
+		log.Printf("CreateChat database error / %v", err)
+		err = p.dbConn.Ping()
+		if err != nil {
+			log.Printf("CreateChat database connection error / %v", err)
+			return 0, model.ErrOnDatabase
+		}
+		return 0, model.ErrRequest
+	}
+	return lastInsertID, nil
+}
+
+func (p *pgDb) insertUserToChat(chatID int, userID int) error {
+	_, err := p.sqlInsertUserToChat.Exec(chatID, userID, time.Now())
+	if err != nil {
+		log.Printf("InsertUserToChat database error / %v", err)
+		err = p.dbConn.Ping()
+		if err != nil {
+			log.Printf("InsertUserToChat database connection error / %v", err)
+			return model.ErrOnDatabase
+		}
+		return model.ErrRequest
+	}
+	return nil
 }

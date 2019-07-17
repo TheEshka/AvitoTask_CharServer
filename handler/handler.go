@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -14,24 +15,17 @@ func Start(m *model.Model, listenPort string) {
 	r := gin.Default()
 	r.POST("/users/add", addUser(m))
 
-	// chats := r.Group("/chats")
-	// {
-	// 	chats.POST("/add", addChat(m))
-	// 	//chats.POST("/get")
-	// }
+	chats := r.Group("/chats")
+	{
+		chats.POST("/add", addChatWithUsers(m))
+		chats.POST("/get", getUserChats(m))
+	}
 
-	// messages := r.Group("/messages")
-	// {
-	// 	messages.POST("/add", addMessage(m))
-	// 	//messages.POST("/get")
-	// }
-
-	// r.POST("/user", createUser(m))
-	// r.PATCH("/user", alterUser(m))
-	// r.DELETE("/user", deleteUser(m))
-	// r.GET("/user", getUser(m))
-
-	// r.POST("/auth", verifyUser(m))
+	messages := r.Group("/messages")
+	{
+		messages.POST("/add", addMessage(m))
+		messages.POST("/get", getChatMessages(m))
+	}
 
 	r.Run(listenPort)
 }
@@ -39,10 +33,9 @@ func Start(m *model.Model, listenPort string) {
 func addUser(m *model.Model) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var json *model.User
-		log.Println("First JsSON", json)
 
 		if err := c.ShouldBindJSON(&json); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.String(http.StatusBadRequest, "")
 			return
 		}
 
@@ -50,15 +43,11 @@ func addUser(m *model.Model) gin.HandlerFunc {
 
 		switch err {
 		case model.ErrOnDatabase:
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error code": err.Error()})
+			c.String(http.StatusServiceUnavailable, "")
 			log.Println(err)
 			return
-		case model.ErrAlreadyExist:
-			c.JSON(http.StatusBadRequest, gin.H{"error code": err.Error()})
-			log.Println(err)
-			return
-		case model.ErrPasswordFormat:
-			c.JSON(http.StatusBadRequest, gin.H{"error code": err.Error()})
+		case model.ErrRequest:
+			c.String(http.StatusBadRequest, "")
 			log.Println(err)
 			return
 		}
@@ -69,28 +58,25 @@ func addUser(m *model.Model) gin.HandlerFunc {
 	}
 }
 
-func addChat(m *model.Model) gin.HandlerFunc {
+func addChatWithUsers(m *model.Model) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var json *model.Chat
+		var json *model.CreateChatRequest
 
 		if err := c.ShouldBindJSON(&json); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.String(http.StatusBadRequest, "")
 			return
 		}
+		fmt.Println(json)
 
-		id, err := m.CreateUser(json.Name)
+		id, err := m.CreateChatWithUsers(json.Name, json.Users)
 
 		switch err {
 		case model.ErrOnDatabase:
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error code": err.Error()})
+			c.String(http.StatusServiceUnavailable, "")
 			log.Println(err)
 			return
-		case model.ErrAlreadyExist:
-			c.JSON(http.StatusBadRequest, gin.H{"error code": err.Error()})
-			log.Println(err)
-			return
-		case model.ErrPasswordFormat:
-			c.JSON(http.StatusBadRequest, gin.H{"error code": err.Error()})
+		case model.ErrRequest:
+			c.String(http.StatusBadRequest, "")
 			log.Println(err)
 			return
 		}
@@ -106,7 +92,7 @@ func addMessage(m *model.Model) gin.HandlerFunc {
 		var json *model.Message
 
 		if err := c.ShouldBindJSON(&json); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.String(http.StatusBadRequest, "")
 			return
 		}
 
@@ -114,21 +100,73 @@ func addMessage(m *model.Model) gin.HandlerFunc {
 
 		switch err {
 		case model.ErrOnDatabase:
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error code": err.Error()})
+			c.String(http.StatusServiceUnavailable, "")
 			log.Println(err)
 			return
-		case model.ErrAlreadyExist:
-			c.JSON(http.StatusBadRequest, gin.H{"error code": err.Error()})
-			log.Println(err)
-			return
-		case model.ErrPasswordFormat:
-			c.JSON(http.StatusBadRequest, gin.H{"error code": err.Error()})
+		case model.ErrRequest:
+			c.String(http.StatusBadRequest, "")
 			log.Println(err)
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
 			"id": id,
+		})
+	}
+}
+
+func getUserChats(m *model.Model) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var json *model.GetUserChatsRequest
+
+		if err := c.ShouldBindJSON(&json); err != nil {
+			c.String(http.StatusBadRequest, "")
+			return
+		}
+
+		chats, err := m.UserChats(json.UserID)
+
+		switch err {
+		case model.ErrOnDatabase:
+			c.String(http.StatusServiceUnavailable, "")
+			log.Println(err)
+			return
+		case model.ErrRequest:
+			c.String(http.StatusBadRequest, "")
+			log.Println(err)
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"chats": chats,
+		})
+	}
+}
+
+func getChatMessages(m *model.Model) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var json *model.GetChatsMessagesRequest
+
+		if err := c.ShouldBindJSON(&json); err != nil {
+			c.String(http.StatusBadRequest, "")
+			return
+		}
+
+		messages, err := m.ChatMessages(json.ChatID)
+
+		switch err {
+		case model.ErrOnDatabase:
+			c.String(http.StatusServiceUnavailable, "")
+			log.Println(err)
+			return
+		case model.ErrRequest:
+			c.String(http.StatusBadRequest, "")
+			log.Println(err)
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"messages": messages,
 		})
 	}
 }
