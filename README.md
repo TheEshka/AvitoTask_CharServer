@@ -4,7 +4,7 @@ Simple API for chats
 For quick start use container
 ```
 git clone https://github.com/TheEshka/AvitoTask_CharServer/
-cd authserver
+cd AvitoTask_CharServer
 docker-compose up -d postgres
 docker-compose up go
 ```
