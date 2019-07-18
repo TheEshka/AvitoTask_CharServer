@@ -19,4 +19,4 @@ ENV DATABASE_IP="127.0.0.1" \
  DATABASE_NAME="chat_db" \
  DATABASE_USER="postgres"
 
-ENTRYPOINT ./main -db="user=$DATABASE_USER password=$DATABASE_PASSW host=$DATABASE_IP dbname=$DATABASE_NAME sslmode=disable" -port=":6666"
+ENTRYPOINT ./main -db="user=$DATABASE_USER password=$DATABASE_PASSW host=$DATABASE_IP dbname=$DATABASE_NAME sslmode=disable" -port=":9000"
