@@ -14,5 +14,9 @@ WORKDIR /app
 COPY --from=build /build/main /app/
 RUN adduser -D -S -h /app appuser
 USER appuser
-EXPOSE 6666
-ENTRYPOINT ./main
+ENV DATABASE_IP="127.0.0.1" \
+ DATABASE_PASSW="mysecretpassword" \
+ DATABASE_NAME="chat_db" \
+ DATABASE_USER="postgres"
+
+ENTRYPOINT ./main -db="user=$DATABASE_USER password=$DATABASE_PASSW host=$DATABASE_IP dbname=$DATABASE_NAME sslmode=disable" -port=":6666"
