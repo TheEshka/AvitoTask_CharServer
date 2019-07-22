@@ -86,7 +86,7 @@ var AddChatSchema = `
 //AddMessageSchema : JSON Schema for add user request
 var AddMessageSchema = `
 {
-	"title": "Add Chat Schema",
+	"title": "Add Message Schema",
 	"type": "object",
 	"properties": {
 		"chat": {
@@ -100,5 +100,33 @@ var AddMessageSchema = `
 		}
 	},
 	"required": ["chat", "author", "text"]
+}
+`
+
+//GetChatsSchema : JSON Schema for get chat request
+var GetChatsSchema = `
+{
+	"title": "Get Chats Schema",
+	"type": "object",
+	"properties": {
+		"user": {
+			"type": "string"
+		}
+	},
+	"required": ["username"]
+}
+`
+
+//GetMessagesSchema : JSON Schema for get messages request
+var GetMessagesSchema = `
+{
+	"title": "Get Messages Schema",
+	"type": "object",
+	"properties": {
+		"chat": {
+			"type": "string"
+		}
+	},
+	"required": ["username"]
 }
 `
