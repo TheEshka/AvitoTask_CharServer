@@ -48,3 +48,57 @@ var ErrOnDatabase = errors.New("Database connection error")
 
 //ErrRequest : error after sending request  to database
 var ErrRequest = errors.New("Not rught request")
+
+//AddUserSchema : JSON Schema for add user request
+var AddUserSchema = `
+{
+	"title": "Add User Schema",
+	"type": "object",
+	"properties": {
+		"username": {
+			"type": "string"
+		}
+	},
+	"required": ["username"]
+}
+`
+
+//AddChatSchema : JSON Schema for add user request
+var AddChatSchema = `
+{
+	"title": "Add Chat Schema",
+	"type": "object",
+	"properties": {
+		"name": {
+			"type": "string"
+		},
+		"users": {
+			"type": "array",
+			"items":{
+				"type": "string"
+			}
+		}
+	},
+	"required": ["name", "users"]
+}
+`
+
+//AddMessageSchema : JSON Schema for add user request
+var AddMessageSchema = `
+{
+	"title": "Add Chat Schema",
+	"type": "object",
+	"properties": {
+		"chat": {
+			"type": "string"
+		},
+		"author": {
+			"type": "string"
+		},
+		"text": {
+			"type": "string"
+		}
+	},
+	"required": ["chat", "author", "text"]
+}
+`

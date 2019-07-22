@@ -2,10 +2,10 @@ package model
 
 type db interface {
 	CreateUser(username string) (int64, error)
-	CreateChatWithUsers(name string, users []int) (int64, error)
-	CreateMessage(chatID int, userID int, text string) (int64, error)
-	UserChats(userID int) ([]*Chat, error)
-	ChatMessages(chatID int) ([]*Message, error)
+	CreateChatWithUsers(name string, users []string) (int64, error)
+	CreateMessage(chatID, userID, text string) (int64, error)
+	UserChats(userID string) ([]*Chat, error)
+	ChatMessages(chatID string) ([]*Message, error)
 }
 
 //Model : wrapper struct

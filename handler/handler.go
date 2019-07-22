@@ -1,12 +1,15 @@
 package handler
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/TheEshka/AvitoTask_CharServer/model"
 	"github.com/gin-gonic/gin"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 //Start :
@@ -32,16 +35,18 @@ func Start(m *model.Model, listenPort string) {
 
 func addUser(m *model.Model) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var json *model.User
-
-		err := c.ShouldBindJSON(&json)
-		if (json.Username == "") || (err != nil) {
+		body, _ := ioutil.ReadAll(c.Request.Body)
+		result, err := gojsonschema.Validate(gojsonschema.NewStringLoader(model.AddUserSchema),
+			gojsonschema.NewBytesLoader(body))
+		if (err != nil) || (!result.Valid()) {
 			c.String(http.StatusBadRequest, "")
 			return
 		}
 
-		id, err := m.CreateUser(json.Username)
+		var user *model.User
+		json.Unmarshal(body, &user)
 
+		id, err := m.CreateUser(user.Username)
 		switch err {
 		case model.ErrOnDatabase:
 			c.String(http.StatusServiceUnavailable, "")
@@ -54,23 +59,25 @@ func addUser(m *model.Model) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusCreated, gin.H{
-			"id": strconv.Itoa(id),
+			"id": strconv.FormatInt(id, 10),
 		})
 	}
 }
 
 func addChatWithUsers(m *model.Model) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var json *model.CreateChatRequest
-
-		err := c.ShouldBindJSON(&json)
-		if (json.Name == "") || (err != nil) {
+		body, _ := ioutil.ReadAll(c.Request.Body)
+		result, err := gojsonschema.Validate(gojsonschema.NewStringLoader(model.AddChatSchema),
+			gojsonschema.NewBytesLoader(body))
+		if (err != nil) || (!result.Valid()) {
 			c.String(http.StatusBadRequest, "")
 			return
 		}
 
-		id, err := m.CreateChatWithUsers(json.Name, json.Users)
+		var chatCreate *model.CreateChatRequest
+		json.Unmarshal(body, &chatCreate)
 
+		id, err := m.CreateChatWithUsers(chatCreate.Name, chatCreate.Users)
 		switch err {
 		case model.ErrOnDatabase:
 			c.String(http.StatusServiceUnavailable, "")
@@ -83,22 +90,25 @@ func addChatWithUsers(m *model.Model) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusCreated, gin.H{
-			"id": strconv.Itoa(id),
+			"id": strconv.FormatInt(id, 10),
 		})
 	}
 }
 
 func addMessage(m *model.Model) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var json *model.Message
-
-		if err := c.ShouldBindJSON(&json); err != nil {
+		body, _ := ioutil.ReadAll(c.Request.Body)
+		result, err := gojsonschema.Validate(gojsonschema.NewStringLoader(model.AddMessageSchema),
+			gojsonschema.NewBytesLoader(body))
+		if (err != nil) || (!result.Valid()) {
 			c.String(http.StatusBadRequest, "")
 			return
 		}
 
-		id, err := m.CreateMessage(json.ChatID, json.AuthorID, json.Text)
+		var message *model.Message
+		json.Unmarshal(body, &message)
 
+		id, err := m.CreateMessage(message.ChatID, message.AuthorID, message.Text)
 		switch err {
 		case model.ErrOnDatabase:
 			c.String(http.StatusServiceUnavailable, "")
@@ -111,7 +121,7 @@ func addMessage(m *model.Model) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusCreated, gin.H{
-			"id": strconv.Itoa(id),
+			"id": strconv.FormatInt(id, 10),
 		})
 	}
 }
