@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/TheEshka/AvitoTask_CharServer/model"
 	"github.com/gin-gonic/gin"
@@ -34,7 +34,8 @@ func addUser(m *model.Model) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var json *model.User
 
-		if err := c.ShouldBindJSON(&json); err != nil {
+		err := c.ShouldBindJSON(&json)
+		if (json.Username == "") || (err != nil) {
 			c.String(http.StatusBadRequest, "")
 			return
 		}
@@ -52,8 +53,8 @@ func addUser(m *model.Model) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"id": id,
+		c.JSON(http.StatusCreated, gin.H{
+			"id": strconv.Itoa(id),
 		})
 	}
 }
@@ -62,11 +63,11 @@ func addChatWithUsers(m *model.Model) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var json *model.CreateChatRequest
 
-		if err := c.ShouldBindJSON(&json); err != nil {
+		err := c.ShouldBindJSON(&json)
+		if (json.Name == "") || (err != nil) {
 			c.String(http.StatusBadRequest, "")
 			return
 		}
-		fmt.Println(json)
 
 		id, err := m.CreateChatWithUsers(json.Name, json.Users)
 
@@ -81,8 +82,8 @@ func addChatWithUsers(m *model.Model) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"id": id,
+		c.JSON(http.StatusCreated, gin.H{
+			"id": strconv.Itoa(id),
 		})
 	}
 }
@@ -109,8 +110,8 @@ func addMessage(m *model.Model) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"id": id,
+		c.JSON(http.StatusCreated, gin.H{
+			"id": strconv.Itoa(id),
 		})
 	}
 }
